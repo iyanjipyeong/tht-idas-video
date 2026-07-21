@@ -1,0 +1,1586 @@
+openapi: 3.0.3
+info:
+  title: IDAS Video Subscription API
+  version: 1.0.0
+  description: |
+    Documentation for take-home technical task submission.
+    This API demonstrates a video subscription service with tier-based access control.
+servers:
+  - url: http://localhost:8080
+    description: Local development server
+
+tags:
+  - name: Health
+    description: Service health check
+  - name: Auth
+    description: Authentication and token issuance
+  - name: Videos
+    description: Accessible video resources
+  - name: Tiers
+    description: Subscription tiers and pricing
+  - name: Subscriptions
+    description: Active user subscription resources
+  - name: Transactions
+    description: Payment transactions and gateway callbacks
+  - name: Payments
+    description: Mock payment callback for subscription activation
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Access token dari endpoint login.
+
+  schemas:
+    Metadata:
+      type: object
+      required: [total, page, offset, sortBy]
+      properties:
+        total:
+          type: integer
+          format: int32
+          example: 3
+        page:
+          type: integer
+          format: int32
+          example: 1
+        offset:
+          type: integer
+          format: int32
+          example: 0
+        sortBy:
+          type: string
+          example: createdAtDesc
+
+    ErrorEnvelope:
+      type: object
+      required: [success, code, message, data]
+      properties:
+        success:
+          type: boolean
+          example: false
+        code:
+          type: string
+          example: E_REQUEST_001
+        message:
+          type: string
+          example: invalid request payload
+        data:
+          nullable: true
+          example: null
+
+    HealthData:
+      type: object
+      required: [buildId, buildTime, uptime]
+      properties:
+        buildId:
+          type: string
+          example: development
+        buildTime:
+          type: string
+          example: unknown
+        uptime:
+          type: string
+          example: 5m0s
+
+    HealthSuccessResponse:
+      type: object
+      required: [success, code, message, data]
+      properties:
+        success:
+          type: boolean
+          example: true
+        code:
+          type: string
+          example: "200"
+        message:
+          type: string
+          example: Successfully
+        data:
+          $ref: '#/components/schemas/HealthData'
+
+    Video:
+      type: object
+      required: [id, title, description, category, videoUrl, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: 44444444-4444-4444-8444-444444444444
+        title:
+          type: string
+          example: Gold Video
+        description:
+          type: string
+          example: Video for Gold tier
+        category:
+          type: string
+          enum: [Bronze, Silver, Gold]
+          example: Gold
+        videoUrl:
+          type: string
+          format: uri
+          example: https://example.com/gold.mp4
+        createdAt:
+          type: integer
+          format: int64
+          description: UTC epoch seconds.
+          example: 1784628000
+        updatedAt:
+          type: integer
+          format: int64
+          description: UTC epoch seconds.
+          example: 1784628000
+
+    VideoListData:
+      type: object
+      required: [items, metadata]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Video'
+        metadata:
+          $ref: '#/components/schemas/Metadata'
+
+    VideoListSuccessResponse:
+      type: object
+      required: [success, code, message, data]
+      properties:
+        success:
+          type: boolean
+          example: true
+        code:
+          type: string
+          example: "200"
+        message:
+          type: string
+          example: Successfully
+        data:
+          $ref: '#/components/schemas/VideoListData'
+
+    VideoDetailSuccessResponse:
+      type: object
+      required: [success, code, message, data]
+      properties:
+        success:
+          type: boolean
+          example: true
+        code:
+          type: string
+          example: "200"
+        message:
+          type: string
+          example: Successfully
+        data:
+          $ref: '#/components/schemas/Video'
+
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+          example: demo@example.com
+        password:
+          type: string
+          format: password
+          example: password
+
+    LoginData:
+      type: object
+      required: [accessToken, refreshToken, expiredAt]
+      properties:
+        accessToken:
+          type: string
+          example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMTExMTExMS0xMTExLTQxMTEtODExMS0xMTExMTExMTExMTEiLCJlbSI6ImRlbW9AZXhhbXBsZS5jb20iLCJ0eXAiOiJhY2Nlc3MiLCJleHAiOiIyMDI2LTA3LTIyVDEwOjAwOjAwWiJ9.signature
+        refreshToken:
+          type: string
+          example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMTExMTExMS0xMTExLTQxMTEtODExMS0xMTExMTExMTExMTEiLCJlbSI6ImRlbW9AZXhhbXBsZS5jb20iLCJ0eXAiOiJyZWZyZXNoIiwiZXhwIjoiMjAyNi0wNy0yOFQxMDowMDowMFoifQ.signature
+        expiredAt:
+          type: integer
+          format: int64
+          description: UTC epoch seconds.
+          example: 1784714400
+
+    LoginSuccessResponse:
+      type: object
+      required: [success, code, message, data]
+      properties:
+        success:
+          type: boolean
+          example: true
+        code:
+          type: string
+          example: "200"
+        message:
+          type: string
+          example: Successfully
+        data:
+          $ref: '#/components/schemas/LoginData'
+
+    TransactionItem:
+      type: object
+      required: [id, externalTransactionId, userId, tierId, tierCode, tierName, tierLevel, tierPrice, tierCurrency, subscriptionAction, subscriptionDays, finalAmount, currency, transactionStatus, paymentStatus, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: 77777777-7777-4777-8777-777777777777
+        externalTransactionId:
+          type: string
+          example: trx-001
+        gatewayTransactionId:
+          type: string
+          example: gw-trx-001
+        orderId:
+          type: string
+          example: ORDER-001
+        userId:
+          type: string
+          format: uuid
+          example: 11111111-1111-4111-8111-111111111111
+        subscriptionId:
+          type: string
+          format: uuid
+          example: 55555555-5555-4555-8555-555555555555
+        tierId:
+          type: string
+          format: uuid
+          example: 11111111-1111-4111-8111-111111111103
+        tierCode:
+          type: string
+          example: Gold
+        tierName:
+          type: string
+          example: Gold
+        tierLevel:
+          type: integer
+          example: 3
+        tierPrice:
+          type: number
+          format: double
+          example: 150000
+        tierCurrency:
+          type: string
+          example: IDR
+        subscriptionAction:
+          type: string
+          example: new
+        subscriptionDays:
+          type: integer
+          example: 30
+        currentSubscriptionId:
+          type: string
+          format: uuid
+          example: ""
+        currentTierId:
+          type: string
+          format: uuid
+          example: ""
+        currentTierCode:
+          type: string
+          example: ""
+        currentTierName:
+          type: string
+          example: ""
+        currentTierLevel:
+          type: integer
+          example: 0
+        currentTierPrice:
+          type: number
+          format: double
+          example: 0
+        currentEndDate:
+          type: integer
+          format: int64
+          nullable: true
+          example: null
+        proratedCredit:
+          type: number
+          format: double
+          example: 0
+        transactionStatus:
+          type: string
+          example: processed
+        paymentStatus:
+          type: string
+          example: paid
+        finalAmount:
+          type: number
+          format: double
+          example: 150000
+        grossAmount:
+          type: number
+          format: double
+          example: 150000
+        currency:
+          type: string
+          example: IDR
+        paymentType:
+          type: string
+          example: bank_transfer
+        fraudStatus:
+          type: string
+          example: accept
+        signatureKey:
+          type: string
+          example: mock-signature
+        transactionTime:
+          type: integer
+          format: int64
+          nullable: true
+          example: 1784628000
+        settlementTime:
+          type: integer
+          format: int64
+          nullable: true
+          example: 1784628300
+        expiryTime:
+          type: integer
+          format: int64
+          nullable: true
+          example: 1784714400
+        settlementTimeRaw:
+          type: string
+          example: 2026-07-22T10:05:00Z
+        createdAt:
+          type: integer
+          format: int64
+          example: 1784628000
+        updatedAt:
+          type: integer
+          format: int64
+          example: 1784628000
+
+    TransactionListData:
+      type: object
+      required: [items, metadata]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/TransactionItem'
+        metadata:
+          $ref: '#/components/schemas/Metadata'
+
+    TransactionListSuccessResponse:
+      type: object
+      required: [success, code, message, data]
+      properties:
+        success:
+          type: boolean
+          example: true
+        code:
+          type: string
+          example: "200"
+        message:
+          type: string
+          example: Successfully
+        data:
+          $ref: '#/components/schemas/TransactionListData'
+
+    TransactionDetailSuccessResponse:
+      type: object
+      required: [success, code, message, data]
+      properties:
+        success:
+          type: boolean
+          example: true
+        code:
+          type: string
+          example: "200"
+        message:
+          type: string
+          example: Successfully
+        data:
+          $ref: '#/components/schemas/TransactionItem'
+
+    ActiveSubscriptionData:
+      type: object
+      required: [id, userId, tierId, tierCode, tierName, tierLevel, tierPrice, tierCurrency, status, startDate, endDate, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: 55555555-5555-4555-8555-555555555555
+        userId:
+          type: string
+          format: uuid
+          example: 11111111-1111-4111-8111-111111111111
+        tierId:
+          type: string
+          format: uuid
+          example: 11111111-1111-4111-8111-111111111103
+        tierCode:
+          type: string
+          example: Gold
+        tierName:
+          type: string
+          example: Gold
+        tierLevel:
+          type: integer
+          example: 3
+        tierPrice:
+          type: number
+          format: double
+          example: 150000
+        tierCurrency:
+          type: string
+          example: IDR
+        status:
+          type: string
+          example: active
+        startDate:
+          type: integer
+          format: int64
+          example: 1784628000
+        endDate:
+          type: integer
+          format: int64
+          example: 1787220000
+        createdAt:
+          type: integer
+          format: int64
+          example: 1784628000
+        updatedAt:
+          type: integer
+          format: int64
+          example: 1784628000
+
+    ActiveSubscriptionSuccessResponse:
+      type: object
+      required: [success, code, message, data]
+      properties:
+        success:
+          type: boolean
+          example: true
+        code:
+          type: string
+          example: "200"
+        message:
+          type: string
+          example: Successfully
+        data:
+          $ref: '#/components/schemas/ActiveSubscriptionData'
+
+    SubscribeTierRequest:
+      type: object
+      required: [tierId, subscriptionAction, subscriptionDays]
+      properties:
+        tierId:
+          type: string
+          format: uuid
+          example: 11111111-1111-4111-8111-111111111103
+        subscriptionAction:
+          type: string
+          enum: [new, renew, upgrade, downgrade]
+          example: new
+        subscriptionDays:
+          type: integer
+          minimum: 1
+          example: 30
+
+    SubscribeTierData:
+      allOf:
+        - $ref: '#/components/schemas/TransactionItem'
+        - type: object
+          required: [paymentReference, paymentChannel, paymentInstructions, expiresAt, requestedAction, effectiveAction]
+          properties:
+            requestedAction:
+              type: string
+              enum: [new, renew, upgrade, downgrade]
+              example: upgrade
+            effectiveAction:
+              type: string
+              enum: [new, renew, upgrade, downgrade]
+              example: upgrade
+            paymentReference:
+              type: string
+              example: sub-11111111-1111-4111-8111-111111111111-1784628000000000000
+            paymentChannel:
+              type: string
+              example: manual-simulated-gateway
+            paymentInstructions:
+              type: array
+              items:
+                type: string
+              example:
+                - Review the transaction reference before sending callback payload.
+                - Use /payment/callback with paymentStatus=paid to simulate a successful notification.
+                - Send the same transactionId to simulate idempotent gateway retries.
+            expiresAt:
+              type: integer
+              format: int64
+              example: 1784714400
+
+    SubscribeTierSuccessResponse:
+      type: object
+      required: [success, code, message, data]
+      properties:
+        success:
+          type: boolean
+          example: true
+        code:
+          type: string
+          example: "200"
+        message:
+          type: string
+          example: Successfully
+        data:
+          $ref: '#/components/schemas/SubscribeTierData'
+
+    TierItem:
+      type: object
+      required: [id, code, name, level, price, currency, description]
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: 11111111-1111-4111-8111-111111111101
+        code:
+          type: string
+          enum: [Bronze, Silver, Gold]
+          example: Bronze
+        name:
+          type: string
+          example: Bronze
+        level:
+          type: integer
+          example: 1
+        price:
+          type: number
+          format: double
+          example: 50000
+        currency:
+          type: string
+          example: IDR
+        description:
+          type: string
+          example: Can access Bronze videos only
+
+    TierListData:
+      type: object
+      required: [items, metadata]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/TierItem'
+        metadata:
+          $ref: '#/components/schemas/Metadata'
+
+    TierListSuccessResponse:
+      type: object
+      required: [success, code, message, data]
+      properties:
+        success:
+          type: boolean
+          example: true
+        code:
+          type: string
+          example: "200"
+        message:
+          type: string
+          example: Successfully
+        data:
+          $ref: '#/components/schemas/TierListData'
+
+    PaymentCallbackRequest:
+      type: object
+      required: [transactionId, userId, tier, paymentStatus, subscriptionDays]
+      properties:
+        transactionId:
+          type: string
+          example: trx-001
+        gatewayTransactionId:
+          type: string
+          example: gw-trx-001
+        orderId:
+          type: string
+          example: ORDER-001
+        userId:
+          type: string
+          format: uuid
+          example: 11111111-1111-4111-8111-111111111111
+        tier:
+          type: string
+          enum: [Bronze, Silver, Gold]
+          example: Gold
+        paymentType:
+          type: string
+          example: bank_transfer
+        paymentStatus:
+          type: string
+          example: paid
+        fraudStatus:
+          type: string
+          example: accept
+        grossAmount:
+          type: number
+          format: double
+          example: 150000
+        currency:
+          type: string
+          example: IDR
+        signatureKey:
+          type: string
+          example: mock-signature
+        transactionTime:
+          type: string
+          format: date-time
+          example: 2026-07-22T10:00:00Z
+        settlementTime:
+          type: string
+          format: date-time
+          example: 2026-07-22T10:05:00Z
+        expiryTime:
+          type: string
+          format: date-time
+          example: 2026-07-22T11:00:00Z
+        subscriptionDays:
+          type: integer
+          minimum: 1
+          example: 30
+
+    PaymentCallbackSuccessResponse:
+      type: object
+      required: [success, code, message, data]
+      properties:
+        success:
+          type: boolean
+          example: true
+        code:
+          type: string
+          example: "200"
+        message:
+          type: string
+          example: Successfully
+        data:
+          nullable: true
+          example: null
+
+paths:
+  /health:
+    get:
+      tags: [Health]
+      summary: Health check
+      description: Mengecek apakah service berjalan normal.
+      responses:
+        '200':
+          description: Service is healthy.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthSuccessResponse'
+              examples:
+                success:
+                  value:
+                    success: true
+                    code: "200"
+                    message: Successfully
+                    data:
+                      buildId: development
+                      buildTime: unknown
+                      uptime: 5m0s
+        '500':
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+              examples:
+                internalError:
+                  value:
+                    success: false
+                    code: E_SERVER_001
+                    message: internal server error
+                    data: null
+
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Login and issue access token
+      description: Authenticate user with email and password, then return access token, refresh token, and expiry time in UTC epoch seconds.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+            examples:
+              validCredentials:
+                value:
+                  email: demo@example.com
+                  password: password
+      responses:
+        '200':
+          description: Login success.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginSuccessResponse'
+              examples:
+                success:
+                  value:
+                    success: true
+                    code: "200"
+                    message: Successfully
+                    data:
+                      accessToken: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMTExMTExMS0xMTExLTQxMTEtODExMS0xMTExMTExMTExMTEiLCJlbSI6ImRlbW9AZXhhbXBsZS5jb20iLCJ0eXAiOiJhY2Nlc3MiLCJleHAiOiIyMDI2LTA3LTIyVDEwOjAwOjAwWiJ9.signature
+                      refreshToken: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMTExMTExMS0xMTExLTQxMTEtODExMS0xMTExMTExMTExMTEiLCJlbSI6ImRlbW9AZXhhbXBsZS5jb20iLCJ0eXAiOiJyZWZyZXNoIiwiZXhwIjoiMjAyNi0wNy0yOFQxMDowMDowMFoifQ.signature
+                      expiredAt: 1784714400
+        '400':
+          description: Invalid request payload.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+              examples:
+                invalidPayload:
+                  value:
+                    success: false
+                    code: E_REQUEST_001
+                    message: invalid request payload
+                    data: null
+        '401':
+          description: Invalid credentials.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+              examples:
+                invalidCredentials:
+                  value:
+                    success: false
+                    code: E_AUTH_001
+                    message: unauthorized
+                    data: null
+        '500':
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+              examples:
+                internalError:
+                  value:
+                    success: false
+                    code: E_SERVER_001
+                    message: internal server error
+                    data: null
+
+  /subscriptions/active:
+    get:
+      tags: [Subscriptions]
+      summary: Get active subscription
+      description: Mengembalikan subscription aktif milik user yang sedang login.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Active subscription found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActiveSubscriptionSuccessResponse'
+              examples:
+                success:
+                  value:
+                    success: true
+                    code: "200"
+                    message: Successfully
+                    data:
+                      id: 55555555-5555-4555-8555-555555555555
+                      userId: 11111111-1111-4111-8111-111111111111
+                      tierId: 11111111-1111-4111-8111-111111111103
+                      tierCode: Gold
+                      tierName: Gold
+                      tierLevel: 3
+                      tierPrice: 150000
+                      tierCurrency: IDR
+                      status: active
+                      startDate: 1784628000
+                      endDate: 1787220000
+                      createdAt: 1784628000
+                      updatedAt: 1784628000
+        '401':
+          description: Unauthorized - missing or invalid user identity.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+              examples:
+                unauthorized:
+                  value:
+                    success: false
+                    code: E_AUTH_001
+                    message: unauthorized
+                    data: null
+        '403':
+          description: Forbidden - active subscription required.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+              examples:
+                noActiveSubscription:
+                  value:
+                    success: false
+                    code: E_ACCESS_001
+                    message: you do not have an active subscription
+                    data: null
+
+  /subscriptions:
+    post:
+      tags: [Subscriptions]
+      summary: Subscribe tier
+      description: Membuat transaksi subscription baru dengan status awal `pending`. Subscription baru aktif setelah callback payment sukses diproses.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubscribeTierRequest'
+            examples:
+              newSubscribe:
+                value:
+                  tierId: 11111111-1111-4111-8111-111111111103
+                  subscriptionAction: new
+                  subscriptionDays: 30
+              downgrade:
+                value:
+                  tierId: 11111111-1111-4111-8111-111111111101
+                  subscriptionAction: downgrade
+                  subscriptionDays: 30
+              upgrade:
+                value:
+                  tierId: 11111111-1111-4111-8111-111111111103
+                  subscriptionAction: upgrade
+                  subscriptionDays: 30
+              renew:
+                value:
+                  tierId: 11111111-1111-4111-8111-111111111102
+                  subscriptionAction: renew
+                  subscriptionDays: 30
+      responses:
+        '200':
+          description: Pending transaction created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubscribeTierSuccessResponse'
+              examples:
+                success:
+                  value:
+                    success: true
+                    code: "200"
+                    message: Successfully
+                    data:
+                      id: 77777777-7777-4777-8777-777777777777
+                      externalTransactionId: sub-11111111-1111-4111-8111-111111111111-1784628000000000000
+                      orderId: ORDER-SUB-1784628000000000000
+                      paymentReference: sub-11111111-1111-4111-8111-111111111111-1784628000000000000
+                      paymentChannel: manual-simulated-gateway
+                      paymentInstructions:
+                        - Review the transaction reference before sending callback payload.
+                        - Use /payment/callback with paymentStatus=paid to simulate a successful notification.
+                        - Send the same transactionId to simulate idempotent gateway retries.
+                      expiresAt: 1784714400
+                      userId: 11111111-1111-4111-8111-111111111111
+                      tierId: 11111111-1111-4111-8111-111111111103
+                      tierCode: Gold
+                      tierName: Gold
+                      tierLevel: 3
+                      tierPrice: 150000
+                      tierCurrency: IDR
+                      requestedAction: upgrade
+                      effectiveAction: upgrade
+                      subscriptionAction: upgrade
+                      subscriptionDays: 30
+                      currentSubscriptionId: 55555555-5555-4555-8555-555555555555
+                      currentTierId: 11111111-1111-4111-8111-111111111102
+                      currentTierCode: Silver
+                      currentTierName: Silver
+                      currentTierLevel: 2
+                      currentTierPrice: 100000
+                      currentEndDate: 1785232800
+                      proratedCredit: 25000
+                      transactionStatus: pending
+                      paymentStatus: pending
+                      finalAmount: 125000
+                      grossAmount: 125000
+                      currency: IDR
+                      createdAt: 1784628000
+                      updatedAt: 1784628000
+        '400':
+          description: Invalid request or invalid tier transition.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+              examples:
+                invalidPayload:
+                  value:
+                    success: false
+                    code: E_REQUEST_001
+                    message: invalid request payload
+                    data: null
+                invalidSubscription:
+                  value:
+                    success: false
+                    code: E_REQUEST_001
+                    message: invalid subscription
+                    data: null
+                downgradeRejected:
+                  value:
+                    success: false
+                    code: E_REQUEST_001
+                    message: active subscription cannot be downgraded
+                    data: null
+                requiresActiveSubscription:
+                  value:
+                    success: false
+                    code: E_REQUEST_001
+                    message: subscription action requires an active subscription
+                    data: null
+                actionMismatch:
+                  value:
+                    success: false
+                    code: E_REQUEST_001
+                    message: subscription action does not match current subscription
+                    data: null
+                repurchaseMustRenew:
+                  value:
+                    success: false
+                    code: E_REQUEST_001
+                    message: active subscription tier can only be renewed
+                    data: null
+        '401':
+          description: Unauthorized - missing or invalid user identity.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+              examples:
+                unauthorized:
+                  value:
+                    success: false
+                    code: E_AUTH_001
+                    message: unauthorized
+                    data: null
+        '500':
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+              examples:
+                internalError:
+                  value:
+                    success: false
+                    code: E_SERVER_001
+                    message: internal server error
+                    data: null
+
+  /transactions:
+    get:
+      tags: [Transactions]
+      summary: List current user transactions
+      description: Mengembalikan daftar transaksi milik user yang sedang login.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Transaction list.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransactionListSuccessResponse'
+              examples:
+                success:
+                  value:
+                    success: true
+                    code: "200"
+                    message: Successfully
+                    data:
+                      items:
+                        - id: 77777777-7777-4777-8777-777777777777
+                          externalTransactionId: trx-001
+                          gatewayTransactionId: gw-trx-001
+                          orderId: ORDER-001
+                          userId: 11111111-1111-4111-8111-111111111111
+                          subscriptionId: 55555555-5555-4555-8555-555555555555
+                          tierId: 11111111-1111-4111-8111-111111111103
+                          tierCode: Gold
+                          tierName: Gold
+                          tierLevel: 3
+                          tierPrice: 150000
+                          tierCurrency: IDR
+                          subscriptionAction: new
+                          subscriptionDays: 30
+                          transactionStatus: processed
+                          paymentStatus: paid
+                          finalAmount: 150000
+                          grossAmount: 150000
+                          currency: IDR
+                          createdAt: 1784628000
+                          updatedAt: 1784628000
+                      metadata:
+                        total: 1
+                        page: 1
+                        offset: 0
+                        sortBy: createdAtDesc
+        '401':
+          description: Unauthorized - missing or invalid user identity.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+              examples:
+                unauthorized:
+                  value:
+                    success: false
+                    code: E_AUTH_001
+                    message: unauthorized
+                    data: null
+        '500':
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+              examples:
+                internalError:
+                  value:
+                    success: false
+                    code: E_SERVER_001
+                    message: internal server error
+                    data: null
+
+  /transactions/{id}:
+    get:
+      tags: [Transactions]
+      summary: Get current user transaction by ID
+      description: Mengembalikan detail transaksi milik user yang sedang login. Transaction milik user lain tidak bisa diakses.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          example: 77777777-7777-4777-8777-777777777777
+      responses:
+        '200':
+          description: Transaction detail.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransactionDetailSuccessResponse'
+              examples:
+                success:
+                  value:
+                    success: true
+                    code: "200"
+                    message: Successfully
+                    data:
+                      id: 77777777-7777-4777-8777-777777777777
+                      externalTransactionId: trx-001
+                      gatewayTransactionId: gw-trx-001
+                      orderId: ORDER-001
+                      userId: 11111111-1111-4111-8111-111111111111
+                      subscriptionId: 55555555-5555-4555-8555-555555555555
+                      tierId: 11111111-1111-4111-8111-111111111103
+                      tierCode: Gold
+                      tierName: Gold
+                      tierLevel: 3
+                      tierPrice: 150000
+                      tierCurrency: IDR
+                      subscriptionAction: new
+                      subscriptionDays: 30
+                      transactionStatus: processed
+                      paymentStatus: paid
+                      finalAmount: 150000
+                      grossAmount: 150000
+                      currency: IDR
+                      createdAt: 1784628000
+                      updatedAt: 1784628000
+        '401':
+          description: Unauthorized - missing or invalid user identity.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+              examples:
+                unauthorized:
+                  value:
+                    success: false
+                    code: E_AUTH_001
+                    message: unauthorized
+                    data: null
+        '400':
+          description: Invalid request payload.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+              examples:
+                invalidTransactionID:
+                  value:
+                    success: false
+                    code: E_REQUEST_001
+                    message: invalid request payload
+                    data: null
+        '404':
+          description: Transaction not found for current user or not accessible.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+              examples:
+                notFound:
+                  value:
+                    success: false
+                    code: E_PAYMENT_001
+                    message: transaction not found
+                    data: null
+        '500':
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+              examples:
+                internalError:
+                  value:
+                    success: false
+                    code: E_SERVER_001
+                    message: internal server error
+                    data: null
+
+  /tiers:
+    get:
+      tags: [Tiers]
+      summary: List subscription tiers
+      description: Mengembalikan daftar tier beserta level, harga, dan deskripsi.
+      responses:
+        '200':
+          description: Tier list.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TierListSuccessResponse'
+              examples:
+                success:
+                  value:
+                    success: true
+                    code: "200"
+                    message: Successfully
+                    data:
+                      items:
+                        - id: 11111111-1111-4111-8111-111111111101
+                          code: Bronze
+                          name: Bronze
+                          level: 1
+                          price: 50000
+                          currency: IDR
+                          description: Can access Bronze videos only
+                        - id: 11111111-1111-4111-8111-111111111102
+                          code: Silver
+                          name: Silver
+                          level: 2
+                          price: 100000
+                          currency: IDR
+                          description: Can access Silver and Bronze videos
+                        - id: 11111111-1111-4111-8111-111111111103
+                          code: Gold
+                          name: Gold
+                          level: 3
+                          price: 150000
+                          currency: IDR
+                          description: Can access Gold, Silver, and Bronze videos
+                      metadata:
+                        total: 3
+                        page: 1
+                        offset: 0
+                        sortBy: createdAtDesc
+        '500':
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+              examples:
+                internalError:
+                  value:
+                    success: false
+                    code: E_SERVER_001
+                    message: internal server error
+                    data: null
+
+  /videos:
+    get:
+      tags: [Videos]
+      summary: List accessible videos
+      description: Mengembalikan daftar video yang dapat diakses user. Semua field waktu pada response memakai UTC epoch seconds.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          required: false
+          description: Jumlah item yang dikembalikan setelah offset.
+          schema:
+            type: integer
+            minimum: 1
+            example: 1
+        - name: offset
+          in: query
+          required: false
+          description: Jumlah data yang dilewati dari hasil awal.
+          schema:
+            type: integer
+            minimum: 0
+            example: 0
+        - name: sort
+          in: query
+          required: false
+          description: Urutan pengambilan data.
+          schema:
+            type: string
+            enum: [createdAtAsc, createdAtDesc, titleAsc, titleDesc]
+            example: createdAtDesc
+      responses:
+        '200':
+          description: List video yang dapat diakses user.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VideoListSuccessResponse'
+              examples:
+                bronzeUser:
+                  summary: Bronze user only gets bronze content
+                  value:
+                    success: true
+                    code: "200"
+                    message: Successfully
+                    data:
+                      items:
+                        - id: 22222222-2222-4222-8222-222222222222
+                          title: Bronze Video
+                          description: Video for Bronze tier
+                          category: Bronze
+                          videoUrl: https://example.com/bronze.mp4
+                          createdAt: 1784628000
+                          updatedAt: 1784628000
+                      metadata:
+                        total: 1
+                        page: 1
+                        offset: 0
+                        sortBy: createdAtDesc
+                goldUser:
+                  summary: Gold user gets all content
+                  value:
+                    success: true
+                    code: "200"
+                    message: Successfully
+                    data:
+                      items:
+                        - id: 44444444-4444-4444-8444-444444444444
+                          title: Gold Video
+                          description: Video for Gold tier
+                          category: Gold
+                          videoUrl: https://example.com/gold.mp4
+                          createdAt: 1784628000
+                          updatedAt: 1784628000
+                        - id: 33333333-3333-4333-8333-333333333333
+                          title: Silver Video
+                          description: Video for Silver tier
+                          category: Silver
+                          videoUrl: https://example.com/silver.mp4
+                          createdAt: 1784628000
+                          updatedAt: 1784628000
+                        - id: 22222222-2222-4222-8222-222222222222
+                          title: Bronze Video
+                          description: Video for Bronze tier
+                          category: Bronze
+                          videoUrl: https://example.com/bronze.mp4
+                          createdAt: 1784628000
+                          updatedAt: 1784628000
+                      metadata:
+                        total: 3
+                        page: 1
+                        offset: 0
+                        sortBy: createdAtDesc
+        '401':
+          description: Unauthorized - missing or invalid user identity.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+              examples:
+                missingHeader:
+                  value:
+                    success: false
+                    code: E_AUTH_001
+                    message: unauthorized
+                    data: null
+        '403':
+          description: Forbidden - active subscription required.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+              examples:
+                noActiveSubscription:
+                  value:
+                    success: false
+                    code: E_ACCESS_001
+                    message: active subscription is required
+                    data: null
+        '500':
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+              examples:
+                databaseFailure:
+                  value:
+                    success: false
+                    code: E_SERVER_001
+                    message: internal server error
+                    data: null
+
+  /videos/{id}:
+    get:
+      tags: [Videos]
+      summary: Get accessible video by ID
+      description: Mengembalikan video tertentu bila tier user mengizinkan akses. Semua field waktu pada response memakai UTC epoch seconds.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Video identifier.
+          schema:
+            type: string
+            format: uuid
+            example: 44444444-4444-4444-8444-444444444444
+      responses:
+        '200':
+          description: Detail video yang dapat diakses user.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VideoDetailSuccessResponse'
+              examples:
+                success:
+                  value:
+                    success: true
+                    code: "200"
+                    message: Successfully
+                    data:
+                      id: 44444444-4444-4444-8444-444444444444
+                      title: Gold Video
+                      description: Video for Gold tier
+                      category: Gold
+                      videoUrl: https://example.com/gold.mp4
+                      createdAt: 1784628000
+                      updatedAt: 1784628000
+        '400':
+          description: Invalid request payload.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+              examples:
+                invalidVideoID:
+                  value:
+                    success: false
+                    code: E_REQUEST_001
+                    message: invalid request payload
+                    data: null
+        '401':
+          description: Unauthorized - missing or invalid user identity.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+              examples:
+                missingHeader:
+                  value:
+                    success: false
+                    code: E_AUTH_001
+                    message: unauthorized
+                    data: null
+        '403':
+          description: Forbidden - tier user tidak cukup untuk kategori video.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+              examples:
+                forbiddenTier:
+                  value:
+                    success: false
+                    code: E_ACCESS_001
+                    message: subscription tier is not allowed to access this video
+                    data: null
+        '404':
+          description: Not found - video tidak ditemukan.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+              examples:
+                videoNotFound:
+                  value:
+                    success: false
+                    code: E_VIDEO_001
+                    message: video not found
+                    data: null
+        '500':
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+              examples:
+                databaseFailure:
+                  value:
+                    success: false
+                    code: E_SERVER_001
+                    message: internal server error
+                    data: null
+
+  /payment/callback:
+    post:
+      tags: [Payments]
+      summary: Mock payment callback
+      description: Simulasi callback payment gateway untuk mengaktifkan subscription user. Callback hanya boleh diproses untuk transaksi reserved yang sudah dibuat sebelumnya dari `POST /subscriptions`. `transactionId`, `orderId`, `userId`, `tier`, `subscriptionDays`, dan `grossAmount` wajib match dengan data transaksi reserved tersebut.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PaymentCallbackRequest'
+            examples:
+              paidGold:
+                summary: Successful callback for reserved transaction that activates subscription
+                value:
+                  transactionId: sub-11111111-1111-4111-8111-111111111111-1784628000000000000
+                  gatewayTransactionId: gw-sub-001
+                  orderId: ORDER-SUB-1784628000000000000
+                  userId: 11111111-1111-4111-8111-111111111111
+                  tier: Gold
+                  paymentType: bank_transfer
+                  paymentStatus: paid
+                  fraudStatus: accept
+                  grossAmount: 150000
+                  currency: IDR
+                  transactionTime: 2026-07-22T10:00:00Z
+                  settlementTime: 2026-07-22T10:05:00Z
+                  subscriptionDays: 30
+              unpaidNotification:
+                summary: Reserved transaction callback remains pending because payment not paid
+                value:
+                  transactionId: sub-11111111-1111-4111-8111-111111111111-1784628000000000001
+                  orderId: ORDER-SUB-1784628000000000001
+                  userId: 11111111-1111-4111-8111-111111111111
+                  tier: Silver
+                  paymentStatus: pending
+                  grossAmount: 100000
+                  subscriptionDays: 30
+      responses:
+        '200':
+          description: Callback processed successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentCallbackSuccessResponse'
+              examples:
+                success:
+                  value:
+                    success: true
+                    code: "200"
+                    message: Successfully
+                    data: null
+        '400':
+          description: Invalid payload, invalid subscription state, or mismatched callback transaction.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+              examples:
+                invalidPayload:
+                  value:
+                    success: false
+                    code: E_REQUEST_001
+                    message: invalid request payload
+                    data: null
+                invalidSubscription:
+                  value:
+                    success: false
+                    code: E_REQUEST_001
+                    message: invalid subscription
+                    data: null
+                invalidTierTransition:
+                  value:
+                    success: false
+                    code: E_REQUEST_001
+                    message: active subscription cannot be downgraded
+                    data: null
+                transactionMismatch:
+                  value:
+                    success: false
+                    code: E_PAYMENT_001
+                    message: transaction payload does not match reserved transaction
+                    data: null
+                alreadyProcessed:
+                  value:
+                    success: false
+                    code: E_PAYMENT_001
+                    message: transaction has already been processed
+                    data: null
+        '404':
+          description: Referenced resource was not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+              examples:
+                userNotFound:
+                  value:
+                    success: false
+                    code: E_USER_001
+                    message: user not found
+                    data: null
+        '500':
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+              examples:
+                persistenceFailure:
+                  value:
+                    success: false
+                    code: E_SERVER_001
+                    message: internal server error
+                    data: null
+                unexpectedFailure:
+                  value:
+                    success: false
+                    code: E_SERVER_001
+                    message: internal server error
+                    data: null

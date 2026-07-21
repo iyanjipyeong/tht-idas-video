@@ -1,0 +1,41 @@
+CREATE TABLE transactions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    external_transaction_id VARCHAR(128) NOT NULL UNIQUE,
+    gateway_transaction_id VARCHAR(128),
+    order_id VARCHAR(128),
+    user_id UUID NOT NULL REFERENCES users(id),
+    subscription_id UUID REFERENCES subscriptions(id),
+    tier_id UUID NOT NULL REFERENCES tiers(id),
+    tier_name VARCHAR(32) NOT NULL,
+    tier_level SMALLINT NOT NULL,
+    tier_price NUMERIC(14, 2) NOT NULL,
+    tier_currency VARCHAR(3) NOT NULL DEFAULT 'IDR',
+    subscription_action VARCHAR(32) NOT NULL,
+    subscription_days INTEGER NOT NULL,
+    current_subscription_id UUID,
+    current_tier_id UUID,
+    current_tier_name VARCHAR(32),
+    current_tier_level SMALLINT,
+    current_tier_price NUMERIC(14, 2),
+    current_end_date TIMESTAMP,
+    prorated_credit NUMERIC(14, 2) NOT NULL DEFAULT 0,
+    final_amount NUMERIC(14, 2) NOT NULL,
+    gross_amount NUMERIC(14, 2),
+    currency VARCHAR(3) NOT NULL DEFAULT 'IDR',
+    payment_type VARCHAR(64),
+    transaction_status VARCHAR(32) NOT NULL,
+    payment_status VARCHAR(32) NOT NULL,
+    fraud_status VARCHAR(32),
+    signature_key TEXT,
+    transaction_time TIMESTAMP,
+    settlement_time TIMESTAMP,
+    expiry_time TIMESTAMP,
+    settlement_time_raw VARCHAR(64),
+    raw_payload JSONB NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX transactions_user_id_idx ON transactions(user_id);
+CREATE INDEX transactions_payment_status_idx ON transactions(payment_status);
+CREATE INDEX transactions_order_id_idx ON transactions(order_id);

@@ -1,0 +1,20 @@
+CREATE TABLE tiers (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name VARCHAR(32) NOT NULL UNIQUE,
+    level SMALLINT NOT NULL UNIQUE CHECK (level IN (1, 2, 3)),
+    price NUMERIC(14, 2) NOT NULL CHECK (price >= 0),
+    currency VARCHAR(3) NOT NULL DEFAULT 'IDR',
+    description TEXT,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE videos (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    title VARCHAR(255) NOT NULL,
+    description TEXT,
+    tier_id UUID NOT NULL REFERENCES tiers(id),
+    video_url TEXT NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);

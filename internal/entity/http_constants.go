@@ -1,0 +1,26 @@
+package entity
+
+const (
+	HTTPHeaderContentType    = "Content-Type"
+	HTTPContentTypeJSON      = "application/json"
+	HTTPContentTypeYAMLUTF8  = "application/yaml; charset=utf-8"
+	HTTPContentTypeHTMLUTF8  = "text/html; charset=utf-8"
+	JSONKeyData              = "data"
+	JSONKeyError             = "error"
+	JSONKeyMessage           = "message"
+	JSONKeyStatus            = "status"
+	HealthStatusOK           = "ok"
+	MessagePaymentCallbackOK = "payment callback processed successfully"
+	RouteHealth              = "GET /health"
+	RouteDocs                = "GET /docs"
+	RouteOpenAPI             = "GET /openapi.yaml"
+	RouteAuthLogin           = "POST /auth/login"
+	RouteSubscriptionsCreate = "POST /subscriptions"
+	RouteSubscriptionActive  = "GET /subscriptions/active"
+	RouteTiersList           = "GET /tiers"
+	RouteTransactionsList    = "GET /transactions"
+	RouteTransactionDetail   = "GET /transactions/{id}"
+	RouteVideosList          = "GET /videos"
+	RouteVideoDetail         = "GET /videos/{id}"
+	RoutePaymentCallback     = "POST /payment/callback"
+)
